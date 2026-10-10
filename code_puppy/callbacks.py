@@ -1378,7 +1378,8 @@ async def on_agent_run_start(
     Args:
         agent_name: Name of the agent starting
         model_name: Name of the model being used
-        session_id: Optional session identifier
+        session_id: Optional run identifier, paired with user_prompt_submit and
+            the matching agent_run_end callback.
 
     Returns:
         List of results from registered callbacks.
@@ -1494,11 +1495,14 @@ async def on_agent_run_end(
     Args:
         agent_name: Name of the agent that finished
         model_name: Name of the model that was used
-        session_id: Optional session identifier
+        session_id: Optional run identifier, paired with user_prompt_submit and
+            the matching agent_run_start callback.
         success: Whether the run completed successfully
         error: Exception if the run failed, None otherwise
         response_text: The final text response from the agent (if successful)
-        metadata: Optional dict with additional context (tokens used, etc.)
+        metadata: Optional dict with additional context (tokens used, etc.).
+            The shared runtime supplies conversation_id for stable memory
+            grouping across turns; session_id remains the per-run identifier.
 
     Returns:
         List of results from registered callbacks.

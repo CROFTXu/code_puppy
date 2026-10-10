@@ -93,6 +93,7 @@ from code_puppy.callbacks import (
     on_user_prompt_submit,
 )
 from code_puppy.config import (
+    get_current_session_name,
     get_enable_streaming,
     get_max_hook_retries,
     get_message_limit,
@@ -100,6 +101,7 @@ from code_puppy.config import (
 from code_puppy.keymap import sigint_fallback_cancels
 from code_puppy.messaging import emit_error, emit_info, emit_warning
 from code_puppy.tools.command_runner import is_awaiting_user_input
+from code_puppy.tools.subagent_context import get_conversation_root_id
 
 # ---- Streaming retry helpers ------------------------------------------------
 
@@ -752,6 +754,14 @@ async def _run_with_mcp_impl(
 
     prompt = _sanitize_prompt(prompt)
     group_id = str(uuid.uuid4())
+    # Keep run IDs for lifecycle correlation and provide a separate conversation
+    # identity for memory. ACP scopes it per asyncio task; CLI
+    # sessions keep their name across turns/resume and rotate on a new session.
+    root_id = get_conversation_root_id()
+    session_key = (
+        f"acp:{root_id}" if root_id is not None else f"cli:{get_current_session_name()}"
+    )
+    conversation_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"code-puppy:{session_key}"))
 
     # Fire user_prompt_submit hooks BEFORE the prompt is sent; plugins (e.g.
     # claude_code_hooks) may return a replacement prompt string.
@@ -1222,6 +1232,7 @@ async def _run_with_mcp_impl(
                     response_text=run_response_text,
                     metadata={
                         "model": agent.get_model_name(),
+                        "conversation_id": conversation_id,
                         **run_usage_metadata,
                     },
                 )
